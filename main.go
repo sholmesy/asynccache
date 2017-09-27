@@ -13,7 +13,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Retrieving slow data...")
 	time.Sleep(3 * time.Second)
 	log.Printf("Done!")
-	fmt.Fprintf(w, "Response for route:", r.URL.Path[1:])
+	fmt.Fprintf(w, "Response for route:%s", r.URL.Path[1:])
 }
 
 func main() {

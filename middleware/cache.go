@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -30,14 +32,33 @@ type AsyncCache struct {
 	settings map[string]DurationSettings
 }
 
-func NewAsyncCache() *AsyncCache {
-
-	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
+func NewRedisClient() *redis.Client {
+	redisHost, ok := os.LookupEnv("REDIS_HOST")
+	if !ok {
+		redisHost = "localhost"
+	}
+	redisPort, ok := os.LookupEnv("REDIS_PORT")
+	if !ok {
+		redisPort = "6379"
+	}
+	redisPass, ok := os.LookupEnv("REDIS_PASS")
+	if !ok {
+		redisPass = ""
+	}
+	redisDBString, ok := os.LookupEnv("REDIS_DB")
+	redisDB, err := strconv.Atoi(redisDBString)
+	if !ok || err != nil {
+		redisDB = 0
+	}
+	urlString := fmt.Sprintf("%s:%s", redisHost, redisPort)
+	return redis.NewClient(&redis.Options{
+		Addr:     urlString,
+		Password: redisPass,
+		DB:       redisDB,
 	})
+}
 
+func NewAsyncCache() *AsyncCache {
 	settings := make(map[string]DurationSettings)
 
 	jsonFile, err := ioutil.ReadFile("route-config.json")
@@ -51,7 +72,7 @@ func NewAsyncCache() *AsyncCache {
 	}
 
 	return &AsyncCache{
-		client:   client,
+		client:   NewRedisClient(),
 		settings: settings,
 	}
 }
@@ -82,7 +103,7 @@ func AsyncCacheMiddleware(handler http.Handler, cache *AsyncCache) http.Handler 
 			for key, value := range rec.Header() {
 				writer.Header()[key] = value
 			}
-			writer.Write([]byte(content))
+			writer.Write([]byte(rec.Body.Bytes()))
 
 		} else {
 			log.Printf("Cache Hit")
