@@ -1,0 +1,10 @@
+{
+    "/api/first/": {
+        "stale": 60,
+        "ttl": 600
+    },
+    "/api/second/": {
+        "stale": 5,
+        "ttl": 60
+    }
+}
