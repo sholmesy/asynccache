@@ -96,7 +96,6 @@ func AsyncCacheMiddleware(handler http.Handler, cache *AsyncCache) http.Handler 
 		content, err := cache.client.Get(key).Result()
 
 		if err != nil {
-			log.Printf("Cache Miss")
 
 			rec := cache.FetchAndCache(handler, req, durationSettings, key)
 
@@ -106,7 +105,6 @@ func AsyncCacheMiddleware(handler http.Handler, cache *AsyncCache) http.Handler 
 			writer.Write([]byte(rec.Body.Bytes()))
 
 		} else {
-			log.Printf("Cache Hit")
 
 			writer.Write([]byte(content))
 
@@ -116,12 +114,13 @@ func AsyncCacheMiddleware(handler http.Handler, cache *AsyncCache) http.Handler 
 			age := durationSettings.TTL() - remainingTTL
 
 			if err == nil && age > durationSettings.Stale() {
-				log.Printf("Cache Stale")
 				// Set the stale data, back into the cache for the
 				// stale duration, to stop multiple requests.
 				cache.client.Set(key, content, durationSettings.Stale())
 				go cache.FetchAndCache(handler, req, durationSettings, key)
 			}
+			// No need to run the other middleware syncronously. Return early
+			return
 		}
 	})
 }
